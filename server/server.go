@@ -1809,7 +1809,10 @@ func (s *MCPServer) handleReadResource(
 		return readResourceResult(contents), nil
 	}
 
-	// If no direct handler found, try matching against templates
+	// If no direct handler found, try matching against templates. Templates
+	// are tried in key order so overlapping templates resolve the same way on
+	// every read; '{' sorts after letters and digits, so a literal segment is
+	// tried before a variable at the same position.
 	var matchedHandler ResourceTemplateHandlerFunc
 	var matched bool
 
@@ -1817,7 +1820,8 @@ func (s *MCPServer) handleReadResource(
 	if session != nil {
 		if sessionWithTemplates, ok := session.(SessionWithResourceTemplates); ok {
 			sessionTemplates := sessionWithTemplates.GetSessionResourceTemplates()
-			for _, serverTemplate := range sessionTemplates {
+			for _, key := range slices.Sorted(maps.Keys(sessionTemplates)) {
+				serverTemplate := sessionTemplates[key]
 				if serverTemplate.Template.URITemplate == nil {
 					continue
 				}
@@ -1838,7 +1842,8 @@ func (s *MCPServer) handleReadResource(
 
 	// If not found in session templates, check global templates
 	if !matched {
-		for _, entry := range s.resourceTemplates {
+		for _, key := range slices.Sorted(maps.Keys(s.resourceTemplates)) {
+			entry := s.resourceTemplates[key]
 			template := entry.template
 			if template.URITemplate == nil {
 				continue
