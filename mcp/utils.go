@@ -669,6 +669,11 @@ func ParseContent(contentMap map[string]any) (Content, error) {
 				c.Size = &size
 			}
 		}
+		if value, ok := contentMap["icons"]; ok && value != nil {
+			if icons, err := parseIcons(value); err == nil {
+				c.Icons = icons
+			}
+		}
 		c.Annotations = annotations
 		c.Meta = meta
 		return c, nil
@@ -732,6 +737,19 @@ func ParseContent(contentMap map[string]any) (Content, error) {
 	}
 
 	return nil, fmt.Errorf("unsupported content type: %s", contentType)
+}
+
+// parseIcons decodes an icons array that was decoded into generic JSON values.
+func parseIcons(value any) ([]Icon, error) {
+	raw, err := json.Marshal(value)
+	if err != nil {
+		return nil, err
+	}
+	var icons []Icon
+	if err := json.Unmarshal(raw, &icons); err != nil {
+		return nil, err
+	}
+	return icons, nil
 }
 
 // ParseSamplingContent parses the content of a SamplingMessage that was

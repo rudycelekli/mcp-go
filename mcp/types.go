@@ -1347,6 +1347,8 @@ type ResourceLink struct {
 	// A pointer is used so that an explicit zero size remains distinguishable
 	// from an unset value.
 	Size *int64 `json:"size,omitempty"`
+	// Icons provides visual identifiers for the linked resource.
+	Icons []Icon `json:"icons,omitempty"`
 }
 
 func (ResourceLink) isContent() {}

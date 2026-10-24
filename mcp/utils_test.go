@@ -1,6 +1,7 @@
 package mcp
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -837,4 +838,54 @@ func TestNewJSONRPCResponse(t *testing.T) {
 	}
 
 	require.Equal(t, want, got)
+}
+
+func TestParseContentResourceLinkIcons(t *testing.T) {
+	contentMap := map[string]any{
+		"type": "resource_link",
+		"uri":  "file:///logo.png",
+		"name": "logo.png",
+		"icons": []any{
+			map[string]any{
+				"src":      "https://example.com/icon.png",
+				"mimeType": "image/png",
+				"sizes":    []any{"48x48"},
+				"theme":    "dark",
+			},
+		},
+	}
+
+	content, err := ParseContent(contentMap)
+	require.NoError(t, err)
+	link, ok := content.(ResourceLink)
+	require.True(t, ok)
+	assert.Equal(t, []Icon{{
+		Src:      "https://example.com/icon.png",
+		MIMEType: "image/png",
+		Sizes:    []string{"48x48"},
+		Theme:    IconThemeDark,
+	}}, link.Icons)
+}
+
+func TestResourceLinkIconsRoundTrip(t *testing.T) {
+	link := NewResourceLink("file:///logo.png", "logo.png", "", "image/png")
+	link.Icons = []Icon{{Src: "data:image/svg+xml;base64,PHN2Zy8+", Sizes: []string{"any"}}}
+
+	data, err := json.Marshal(&CallToolResult{Content: []Content{link}})
+	require.NoError(t, err)
+
+	raw := json.RawMessage(data)
+	parsed, err := ParseCallToolResult(&raw)
+	require.NoError(t, err)
+	require.Len(t, parsed.Content, 1)
+	got, ok := parsed.Content[0].(ResourceLink)
+	require.True(t, ok)
+	assert.Equal(t, link.Icons, got.Icons)
+
+	var generic map[string]any
+	require.NoError(t, json.Unmarshal(data, &generic))
+	contentMap := generic["content"].([]any)[0].(map[string]any)
+	viaMap, err := ParseContent(contentMap)
+	require.NoError(t, err)
+	assert.Equal(t, link.Icons, viaMap.(ResourceLink).Icons)
 }
